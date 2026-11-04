@@ -1,7 +1,7 @@
 #include "ETKT.h"
 
 #include <Arduino.h>
-#include <FreeRTOS.h>
+#include <freertos/FreeRTOS.h>
 
 #include <map>
 #include <mutex>

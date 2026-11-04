@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FreeRTOS.h>
+#include <freertos/FreeRTOS.h>
 
 #include <map>
 #include <mutex>

@@ -1,7 +1,7 @@
-#include "Network.h"
+#include "WebInterface.h"
 
 #include <Arduino.h>
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
@@ -19,11 +19,11 @@
 #include "esp_heap_caps.h"
 
 
-Network *Network::instance = NULL;
+WebInterface *WebInterface::instance = NULL;
 
-Network::Network(Logger *logger, Display *display, ETKT *etkt,
+WebInterface::WebInterface(Logger *logger, Display *display, ETKT *etkt,
                  uint8_t resetPin) {
-  Network::instance = this;
+  WebInterface::instance = this;
   this->logger = logger;
   this->display = display;
   this->etkt = etkt;
@@ -32,24 +32,24 @@ Network::Network(Logger *logger, Display *display, ETKT *etkt,
   this->resetPin = resetPin;
 }
 
-Network::~Network() {
+WebInterface::~WebInterface() {
   delete server;
   delete dns;
 }
 
-void Network::softAPCallbackStatic(AsyncWiFiManager *manager) {
+void WebInterface::softAPCallbackStatic(AsyncWiFiManager *manager) {
   if (instance) {
     instance->softAPCallback(manager);
   }
 }
 
-void Network::softAPCallback(AsyncWiFiManager *manager) {
+void WebInterface::softAPCallback(AsyncWiFiManager *manager) {
   // captive portal to configure SSID and password
   this->display->renderConfig();
   this->logger->log(String("SoftAP SSID: ") + manager->getConfigPortalSSID());
 }
 
-void Network::clearWiFiCredentials() {
+void WebInterface::clearWiFiCredentials() {
   // load the flash-saved configs
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_wifi_init(&cfg);  // initiate and allocate wifi resources
@@ -66,7 +66,7 @@ void Network::clearWiFiCredentials() {
   esp_restart();
 }
 
-void Network::initialize() {
+void WebInterface::initialize() {
   pinMode(resetPin, INPUT);
 
   // local intialization. once its business is done, there is no need to keep it
@@ -79,7 +79,7 @@ void Network::initialize() {
   }
   // Set this->softAPCallback as wifiManager's APCallback.
   // This function will be called once the WiFiManager enters AP mode.
-  wifiManager.setAPCallback(&Network::softAPCallbackStatic);
+  wifiManager.setAPCallback(&WebInterface::softAPCallbackStatic);
   wifiManager.setDebugOutput(DEBUG_WIFI);
 
   // fetches ssid and pass and tries to connect
@@ -113,60 +113,67 @@ void Network::initialize() {
 
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/cut",
-      std::bind(&Network::cutPostHandler, this, std::placeholders::_1)));
+      std::bind(&WebInterface::cutPostHandler, this, std::placeholders::_1)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/feed",
-      std::bind(&Network::feedPostHandler, this, std::placeholders::_1)));
+      std::bind(&WebInterface::feedPostHandler, this, std::placeholders::_1)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/reel",
-      std::bind(&Network::reelPostHandler, this, std::placeholders::_1)));
+      std::bind(&WebInterface::reelPostHandler, this, std::placeholders::_1)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
-      "/api/save", std::bind(&Network::savePostHandler, this,
+      "/api/save", std::bind(&WebInterface::savePostHandler, this,
                              std::placeholders::_1, std::placeholders::_2)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/testalign",
-      std::bind(&Network::testAlignPostHandler, this, std::placeholders::_1,
+      std::bind(&WebInterface::testAlignPostHandler, this, std::placeholders::_1,
                 std::placeholders::_2)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/testfull",
-      std::bind(&Network::testFullPostHandler, this, std::placeholders::_1,
+      std::bind(&WebInterface::testFullPostHandler, this, std::placeholders::_1,
                 std::placeholders::_2)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
       "/api/home",
-      std::bind(&Network::homePostHandler, this, std::placeholders::_1)));
+      std::bind(&WebInterface::homePostHandler, this, std::placeholders::_1)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
-      "/api/move", std::bind(&Network::movePostHandler, this,
+      "/api/move", std::bind(&WebInterface::movePostHandler, this,
                              std::placeholders::_1, std::placeholders::_2)));
   this->server->addHandler(new AsyncCallbackJsonWebHandler(
-      "/api/tag", std::bind(&Network::tagPostHandler, this,
+      "/api/tag", std::bind(&WebInterface::tagPostHandler, this,
                             std::placeholders::_1, std::placeholders::_2)));
 
   // Check printing status
-  this->server->on(
-      "/api/status", HTTP_GET,
-      std::bind(&Network::statusGetHandler, this, std::placeholders::_1));
+  this->server->on("/api/status", HTTP_GET,
+                   [this](AsyncWebServerRequest *request) {
+                     this->statusGetHandler(request);
+                   });
 
   // Serve static assets from the SPIFFS root directory.
   this->server->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
   // Handle 404s
   this->server->onNotFound(
-      std::bind(&Network::notFoundHandler, this, std::placeholders::_1));
+      std::bind(&WebInterface::notFoundHandler, this, std::placeholders::_1));
 
   if (ENABLE_OTA) {
     // Endpoint to accept OTA updates to hardware and firmware.
-    AsyncElegantOTA.begin(server);
+    ElegantOTA.begin(server);
   }
 
   // Start server
   this->server->begin();
 }
 
-void Network::notFoundHandler(AsyncWebServerRequest *request) {
+void WebInterface::loop() {
+  if (ENABLE_OTA) {
+    ElegantOTA.loop();
+  }
+}
+
+void WebInterface::notFoundHandler(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
-void Network::savePostHandler(AsyncWebServerRequest *request,
+void WebInterface::savePostHandler(AsyncWebServerRequest *request,
                               JsonVariant &json) {
   const auto request_data = json.as<JsonObject>();
   auto response_data = new AsyncJsonResponse();
@@ -192,7 +199,7 @@ void Network::savePostHandler(AsyncWebServerRequest *request,
   request->send(response_data);
 }
 
-void Network::homePostHandler(AsyncWebServerRequest *request) {
+void WebInterface::homePostHandler(AsyncWebServerRequest *request) {
   auto response_data = new AsyncJsonResponse();
   const auto response_root = response_data->getRoot();
   try {
@@ -206,7 +213,7 @@ void Network::homePostHandler(AsyncWebServerRequest *request) {
   request->send(response_data);
 }
 
-void Network::movePostHandler(AsyncWebServerRequest *request,
+void WebInterface::movePostHandler(AsyncWebServerRequest *request,
                               JsonVariant &json) {
   const auto request_data = json.as<JsonObject>();
   auto response_data = new AsyncJsonResponse();
@@ -222,7 +229,7 @@ void Network::movePostHandler(AsyncWebServerRequest *request,
   request->send(response_data);
 }
 
-void Network::tagPostHandler(AsyncWebServerRequest *request,
+void WebInterface::tagPostHandler(AsyncWebServerRequest *request,
                              JsonVariant &json) {
   const auto request_data = json.as<JsonObject>();
   auto response_data = new AsyncJsonResponse();
@@ -244,7 +251,7 @@ void Network::tagPostHandler(AsyncWebServerRequest *request,
   request->send(response_data);
 }
 
-void Network::testAlignPostHandler(AsyncWebServerRequest *request,
+void WebInterface::testAlignPostHandler(AsyncWebServerRequest *request,
                                    JsonVariant &json) {
   const auto request_data = json.as<JsonObject>();
   auto response_data = new AsyncJsonResponse();
@@ -266,7 +273,7 @@ void Network::testAlignPostHandler(AsyncWebServerRequest *request,
   request->send(response_data);
 }
 
-void Network::testFullPostHandler(AsyncWebServerRequest *request,
+void WebInterface::testFullPostHandler(AsyncWebServerRequest *request,
                                   JsonVariant &json) {
   const auto request_data = json.as<JsonObject>();
   auto response_data = new AsyncJsonResponse();
@@ -292,7 +299,7 @@ void Network::testFullPostHandler(AsyncWebServerRequest *request,
   request->send(response_data);
 }
 
-void Network::cutPostHandler(AsyncWebServerRequest *request) {
+void WebInterface::cutPostHandler(AsyncWebServerRequest *request) {
   auto response_data = new AsyncJsonResponse();
   const auto response_root = response_data->getRoot();
   try {
@@ -306,7 +313,7 @@ void Network::cutPostHandler(AsyncWebServerRequest *request) {
   request->send(response_data);
 }
 
-void Network::feedPostHandler(AsyncWebServerRequest *request) {
+void WebInterface::feedPostHandler(AsyncWebServerRequest *request) {
   auto response_data = new AsyncJsonResponse();
   const auto response_root = response_data->getRoot();
   try {
@@ -320,7 +327,7 @@ void Network::feedPostHandler(AsyncWebServerRequest *request) {
   request->send(response_data);
 }
 
-void Network::reelPostHandler(AsyncWebServerRequest *request) {
+void WebInterface::reelPostHandler(AsyncWebServerRequest *request) {
   auto response_data = new AsyncJsonResponse();
   const auto response_root = response_data->getRoot();
   try {
@@ -334,7 +341,7 @@ void Network::reelPostHandler(AsyncWebServerRequest *request) {
   request->send(response_data);
 }
 
-void Network::statusGetHandler(AsyncWebServerRequest *request) {
+void WebInterface::statusGetHandler(AsyncWebServerRequest *request) {
   AsyncJsonResponse *response = new AsyncJsonResponse();
   const JsonObject &root = response->getRoot();
 

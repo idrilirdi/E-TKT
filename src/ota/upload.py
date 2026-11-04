@@ -1,12 +1,13 @@
-# Allows PlatformIO to upload directly to AsyncElegantOTA
-# This script was copied form the AsyncelegantOTA github repo at:
+# Allows PlatformIO to upload directly to ElegantOTA v3
+# Based on the AsyncElegantOTA upload script:
 # https://github.com/ayushsharma82/AsyncElegantOTA
-# 
+# ElegantOTA v3 first takes the MD5 at /ota/start, then the file at /ota/upload.
+#
 # To use, set the following for your project in platformio.ini:
 #
 # extra_scripts = <path_to_this_script>
 # upload_protocol = custom
-# upload_url = http://e-tkt.local/update # or access by ip address
+# upload_url = http://e-tkt.local # or access by ip address
 
 import requests
 import hashlib
@@ -23,14 +24,20 @@ except ImportError:
 
 def on_upload(source, target, env):
     firmware_path = str(source[0])
-    upload_url = env.GetProjectOption('upload_url')
+    upload_url = env.GetProjectOption('upload_url').rstrip('/')
 
     with open(firmware_path, 'rb') as firmware:
         md5 = hashlib.md5(firmware.read()).hexdigest()
         firmware.seek(0)
+
+        start = requests.get(upload_url + '/ota/start',
+                             params={'mode': 'fr', 'hash': md5})
+        if start.status_code != 200:
+            print(start, start.text)
+            return 1
+
         encoder = MultipartEncoder(fields={
-            'MD5': md5, 
-            'firmware': ('firmware', firmware, 'application/octet-stream')}
+            'file': ('firmware.bin', firmware, 'application/octet-stream')}
         )
 
         bar = tqdm(desc='Upload Progress',
@@ -43,7 +50,7 @@ def on_upload(source, target, env):
 
         monitor = MultipartEncoderMonitor(encoder, lambda monitor: bar.update(monitor.bytes_read - bar.n))
 
-        response = requests.post(upload_url, data=monitor, headers={'Content-Type': monitor.content_type})
+        response = requests.post(upload_url + '/ota/upload', data=monitor, headers={'Content-Type': monitor.content_type})
         bar.close()
         print(response,response.text)
             

@@ -112,15 +112,26 @@ second `3V3_OUT` pad.
 - The Seeed library is KiCad 10 format (`version 20251024`), so this branch
   needs KiCad 10.
 
-## Firmware follow-ups
+## Firmware
 
-- `src/Configuration.h`: new GPIO numbers from the table above;
-  `WIFI_RESET_PIN` becomes 3 (MTDI, the WI-FI button).
-- `platformio.ini`: arduino-esp32 3.3.5 or later (Seeed's minimum), via the
-  pioarduino platform. Set `-DARDUINO_USB_CDC_ON_BOOT=1` so `Serial` uses USB
-  and UART0 pins stay free.
-- Library updates for arduino-esp32 3.x: ESP32Servo, ESPAsyncWebServer
-  (ESP32Async), ElegantOTA in place of AsyncElegantOTA.
+- `src/Configuration.h`: GPIO numbers from the table above; `WIFI_RESET_PIN`
+  is 3 (MTDI, the WI-FI button). FN needs no firmware. The feed stepper pins
+  are now defines (`PIN_FEED_ULN1` to `PIN_FEED_ULN4`) instead of literals in
+  `Feeder.cpp`.
+- `platformio.ini`: pioarduino platform 55.03.311 (arduino-esp32 3.3.11),
+  board `seeed_xiao_esp32c5`. The board definition already enables USB CDC on
+  boot, so `Serial` uses USB and the UART0 pins stay free.
+- Libraries for arduino-esp32 3.x: ESP32Servo 3.x (core `tone()` and
+  `analogWrite()` replace its old `ESP32Tone.h` and `analogWrite.h`),
+  ESPAsyncWebServer and AsyncTCP from ESP32Async, ElegantOTA 3 in place of
+  AsyncElegantOTA.
+- `Network` is renamed `WebInterface`: core 3.x ships its own `Network.h` and a
+  global `Network` object, which the old name shadowed.
+- OTA: `src/ota/upload.py` follows the ElegantOTA 3 protocol (`/ota/start`,
+  then `/ota/upload`), so `upload_url` is now the device base URL.
+  `WebInterface::loop()` runs `ElegantOTA.loop()`, which reboots after an
+  update.
+- Builds with OTA on and off; the SPIFFS image builds. Not yet run on hardware.
 
 ## Unverified
 

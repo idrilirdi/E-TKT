@@ -9,7 +9,9 @@
 
 Feeder::Feeder(Logger* logger) {
   this->logger = logger;
-  this->stepper = new AccelStepper(MICROSTEPS_FEED, 15, 2, 16, 4);
+  // Same coil order as before the XIAO port: ULN1, ULN3, ULN4, ULN2
+  this->stepper = new AccelStepper(MICROSTEPS_FEED, PIN_FEED_ULN1, PIN_FEED_ULN3,
+                                   PIN_FEED_ULN4, PIN_FEED_ULN2);
 }
 
 Feeder::~Feeder() { delete stepper; }

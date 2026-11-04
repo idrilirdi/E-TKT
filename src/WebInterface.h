@@ -25,11 +25,11 @@
  *  - Serving the web interface and API endpoints
  *  - Advertising the device over MDNS.
  */
-class Network {
+class WebInterface {
  private:
   // A hacky static workaround to make the softAPCallbackStatic method work.
   // Needed because of how the ESPAsyncWiFiManager library works.
-  static Network *instance;
+  static WebInterface *instance;
 
   Logger *logger;
   AsyncWebServer *server;
@@ -67,12 +67,17 @@ class Network {
   void notFoundHandler(AsyncWebServerRequest *request);
 
  public:
-  Network(Logger *logger, Display *display, ETKT *etkt, uint8_t resetPin);
-  ~Network();
+  WebInterface(Logger *logger, Display *display, ETKT *etkt, uint8_t resetPin);
+  ~WebInterface();
 
   /**
    * Connects to the network, starts the captive portal if necessary, and starst
    * the webapp's server.
    */
   void initialize();
+
+  /**
+   * Services the OTA updater, which reboots the device after a finished update.
+   */
+  void loop();
 };

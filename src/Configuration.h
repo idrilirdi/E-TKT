@@ -74,16 +74,23 @@
 
 /**
  * Hardware Pins
+ *
+ * GPIO numbers on the Seeed XIAO ESP32-C5. The comment gives the XIAO pad; see
+ * _electronic/XIAO-C5.md for the full pin map and the strapping-pin rules.
  */
-#define HALL_PIN 34        // hall sensor
-#define WIFI_RESET_PIN 13  // tact switch
-#define SERVO_PIN 14       // Press servo
-#define CHARACTER_LED_PIN 17
-#define FINISH_LED_PIN 5
-#define PIN_STEPPER_CHAR_STEP 32
-#define PIN_STEPPER_CHAR_DIR 33
-#define PIN_STEPPER_CHAR_ENABLE 25
-#define BUZZER_PIN 26
+#define HALL_PIN 1                 // D0, ADC capable
+#define WIFI_RESET_PIN 3           // MTDI (bottom pad), WI-FI button
+#define SERVO_PIN 8                // D8
+#define CHARACTER_LED_PIN 11       // D6
+#define FINISH_LED_PIN 2           // MTMS (bottom pad)
+#define PIN_STEPPER_CHAR_STEP 25   // D2
+#define PIN_STEPPER_CHAR_DIR 7     // D3
+#define PIN_STEPPER_CHAR_ENABLE 4  // MTCK (bottom pad)
+#define BUZZER_PIN 12              // D7
+#define PIN_FEED_ULN1 0            // D1
+#define PIN_FEED_ULN2 9            // D9
+#define PIN_FEED_ULN3 10           // D10
+#define PIN_FEED_ULN4 5            // MTDO (bottom pad)
 
 /**
  * Physical Characteristics

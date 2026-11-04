@@ -1,7 +1,6 @@
 #include "Sound.h"
 
 #include <Arduino.h>
-#include <ESP32Tone.h>
 
 #include "Characters.h"
 #include "Configuration.h"

@@ -41,7 +41,7 @@
 #include "HallSwitch.h"
 #include "Light.h"
 #include "Logger.h"
-#include "Network.h"
+#include "WebInterface.h"
 #include "Press.h"
 #include "Settings.h"
 #include "Sound.h"
@@ -60,7 +60,7 @@ DaisyWheel* daisywheel = new DaisyWheel(logger, hall, characters, settings);
 Feeder* feeder = new Feeder(logger);
 ETKT* etkt = new ETKT(logger, settings, characters, display, daisywheel, hall,
                       feeder, press, sound, ledFinish, ledChar);
-Network* network = new Network(logger, display, etkt, WIFI_RESET_PIN);
+WebInterface* network = new WebInterface(logger, display, etkt, WIFI_RESET_PIN);
 
 void setup() {
   // Initialize hardware
@@ -76,4 +76,7 @@ void setup() {
   display->renderIdle();
 }
 
-void loop() { etkt->loop(); }
+void loop() {
+  etkt->loop();
+  network->loop();
+}
